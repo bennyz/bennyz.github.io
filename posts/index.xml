@@ -2,20 +2,20 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
  <channel>
    <title>Posts on Technical Notes</title>
-   <link>bennyz.github.io/posts/</link>
+   <link>https://bennyz.github.io/posts/</link>
    <description>Recent content in Posts on Technical Notes</description>
    <generator>Hugo -- gohugo.io</generator>
    <lastBuildDate>Fri, 27 Dec 2019 18:32:51 +0200</lastBuildDate>
    
-       <atom:link href="bennyz.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+       <atom:link href="https://bennyz.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
    
    
      <item>
        <title>Setting Static Ip Using Libvirt</title>
-       <link>bennyz.github.io/posts/setting-static-ip-using-libvirt/</link>
+       <link>https://bennyz.github.io/posts/setting-static-ip-using-libvirt/</link>
        <pubDate>Fri, 27 Dec 2019 18:32:51 +0200</pubDate>
        
-       <guid>bennyz.github.io/posts/setting-static-ip-using-libvirt/</guid>
+       <guid>https://bennyz.github.io/posts/setting-static-ip-using-libvirt/</guid>
        <description>&lt;p&gt;As part of the work on my pet project, &lt;a href=&#34;https://github.com/PUMATeam/catapult&#34;&gt;catapult&lt;/a&gt; (on which I will expand in another post), I was looking for a way to set a static IP address for a VM managed by libvirt. This VM serves me as the testing host which I use for development. Having the same IP always provides a couple of benefits:&lt;/p&gt;
 &lt;pre&gt;&lt;code&gt;1. Using the same API parameters whenever I test
 2. I can easily script the deployment of the test host for other to use
