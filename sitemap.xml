@@ -3,15 +3,31 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>http://bennyz.github.io/categories/</loc>
+    <loc>bennyz.github.com/posts/</loc>
+    <lastmod>2019-12-27T18:32:51+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://bennyz.github.io/tags/</loc>
+    <loc>bennyz.github.com/posts/setting-static-ip-using-libvirt/</loc>
+    <lastmod>2019-12-27T18:32:51+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://bennyz.github.io/</loc>
+    <loc>bennyz.github.com/</loc>
+    <lastmod>2019-12-27T18:32:51+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>bennyz.github.com/about/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>bennyz.github.com/categories/</loc>
+  </url>
+  
+  <url>
+    <loc>bennyz.github.com/tags/</loc>
   </url>
   
 </urlset>
