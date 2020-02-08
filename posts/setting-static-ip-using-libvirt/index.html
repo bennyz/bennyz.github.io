@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="The HTML5 Herald" />
-<meta name="author" content="Benny Zlotnik" /><meta property="og:title" content="Setting Static Ip Using Libvirt" />
+<meta name="author" content="Benny Zlotnik" /><meta property="og:title" content="Setting Static IP Using Libvirt" />
 <meta property="og:description" content="As part of the work on my pet project, catapult (on which I will expand in another post), I was looking for a way to set a static IP address for a VM managed by libvirt." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bennyz.github.io/posts/setting-static-ip-using-libvirt/" />
@@ -15,10 +15,10 @@
 <meta property="article:modified_time" content="2019-12-27T18:32:51+02:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Setting Static Ip Using Libvirt"/>
+<meta name="twitter:title" content="Setting Static IP Using Libvirt"/>
 <meta name="twitter:description" content="As part of the work on my pet project, catapult (on which I will expand in another post), I was looking for a way to set a static IP address for a VM managed by libvirt."/>
 
-<meta name="generator" content="Hugo 0.62.0" />
+<meta name="generator" content="Hugo 0.64.0" />
     
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css" />
@@ -59,7 +59,7 @@
 
 <article>
 
-    <h1>Setting Static Ip Using Libvirt</h1>
+    <h1>Setting Static IP Using Libvirt</h1>
 
     
         <aside>
@@ -140,12 +140,12 @@ updated_network <span style="color:#f92672">=</span> update_network(
 network <span style="color:#f92672">=</span> conn<span style="color:#f92672">.</span>networkDefineXML(updated_network)
 network<span style="color:#f92672">.</span>setAutostart(True)
 network<span style="color:#f92672">.</span>create()
-</code></pre></div><p>So this code doesn't do much other than check the DHCP configuration of the network,  then injects the XML element to the network definition</p>
+</code></pre></div><p>So this code doesn&rsquo;t do much other than check the DHCP configuration of the network,  then injects the XML element to the network definition</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#f92672">&lt;host</span> <span style="color:#a6e22e">mac=</span><span style="color:#e6db74">&#39;52:54:00:8a:7b:9d&#39;</span> <span style="color:#a6e22e">name=</span><span style="color:#e6db74">&#39;fc_host&#39;</span> <span style="color:#a6e22e">ip=</span><span style="color:#e6db74">&#39;192.168.122.45&#39;</span><span style="color:#f92672">/&gt;</span>
 </code></pre></div><p>Then it destroys and starts the network if needed.</p>
 <p>This is not to pleasant, but it mostly works fine. However, I revisited the issue again, for reasons I cannot recall. And found an <!-- raw HTML omitted -->old reply<!-- raw HTML omitted --> in the libvirt mailing list, where the net-update command was pointed out:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">virsh net-update default add-last ip-dhcp-host <span style="color:#ae81ff">\
-</span><span style="color:#ae81ff"></span><span style="color:#e6db74">&#39;&lt;span id=&#34;mce_SELREST_start&#34; style=&#34;overflow:hidden;line-height:0;&#34;&gt;&lt;/span&gt;&#39;</span> <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span><span style="color:#e6db74">&#34;&lt;host mac=&#39;52:54:00:8a:7b:9d&#39; name=&#39;fc_host&#39; ip=&#39;192.168.122.45&#39;/&gt;&#34;</span> <span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span>--live --config
 </code></pre></div><p>Which I find very convenient, since I can simply do what I wanted without restarting the network and I can throw away the Python script, and my test VM definition script will now look like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e">#!/bin/bash
@@ -206,7 +206,7 @@ mac_address <span style="color:#f92672">=</span> sys<span style="color:#f92672">
 network <span style="color:#f92672">=</span> conn<span style="color:#f92672">.</span>networkLookupByName(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>])
 flags <span style="color:#f92672">=</span> (libvirt<span style="color:#f92672">.</span>VIR_NETWORK_UPDATE_AFFECT_LIVE <span style="color:#f92672">|</span>
             libvirt<span style="color:#f92672">.</span>VIR_NETWORK_UPDATE_AFFECT_CONFIG)
-entry <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">&#34;</span><span style="color:#f92672">.</span>format(
+entry <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">&lt;host mac=</span><span style="color:#e6db74">&#39;</span><span style="color:#e6db74">{}</span><span style="color:#e6db74">&#39;</span><span style="color:#e6db74"> name=</span><span style="color:#e6db74">&#39;</span><span style="color:#e6db74">{}</span><span style="color:#e6db74">&#39;</span><span style="color:#e6db74"> ip=</span><span style="color:#e6db74">&#39;</span><span style="color:#e6db74">{}</span><span style="color:#e6db74">&#39;</span><span style="color:#e6db74">/&gt;</span><span style="color:#e6db74">&#34;</span><span style="color:#f92672">.</span>format(
         mac_address, dom_name, ip_address)
 network<span style="color:#f92672">.</span>update(
         libvirt<span style="color:#f92672">.</span>VIR_NETWORK_UPDATE_COMMAND_ADD_LAST,

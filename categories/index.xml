@@ -10,7 +10,7 @@
    
    
      <item>
-       <title>Setting Static Ip Using Libvirt</title>
+       <title>Setting Static IP Using Libvirt</title>
        <link>https://bennyz.github.io/posts/setting-static-ip-using-libvirt/</link>
        <pubDate>Fri, 27 Dec 2019 18:32:51 +0200</pubDate>
        
@@ -78,12 +78,12 @@ updated_network &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; update_
 network &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; conn&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;networkDefineXML(updated_network)
 network&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;setAutostart(True)
 network&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;create()
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;So this code doesn&#39;t do much other than check the DHCP configuration of the network,  then injects the XML element to the network definition&lt;/p&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;So this code doesn&amp;rsquo;t do much other than check the DHCP configuration of the network,  then injects the XML element to the network definition&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-xml&#34; data-lang=&#34;xml&#34;&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;host&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;mac=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;52:54:00:8a:7b:9d&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;name=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;fc_host&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;ip=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;192.168.122.45&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;/&amp;gt;&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Then it destroys and starts the network if needed.&lt;/p&gt;
 &lt;p&gt;This is not to pleasant, but it mostly works fine. However, I revisited the issue again, for reasons I cannot recall. And found an &lt;!-- raw HTML omitted --&gt;old reply&lt;!-- raw HTML omitted --&gt; in the libvirt mailing list, where the net-update command was pointed out:&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;virsh net-update default add-last ip-dhcp-host &lt;span style=&#34;color:#ae81ff&#34;&gt;\
-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;lt;span id=&amp;#34;mce_SELREST_start&amp;#34; style=&amp;#34;overflow:hidden;line-height:0;&amp;#34;&amp;gt;&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;\
+&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;lt;host mac=&amp;#39;52:54:00:8a:7b:9d&amp;#39; name=&amp;#39;fc_host&amp;#39; ip=&amp;#39;192.168.122.45&amp;#39;/&amp;gt;&amp;#34;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;\
 &lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;&lt;/span&gt;--live --config
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Which I find very convenient, since I can simply do what I wanted without restarting the network and I can throw away the Python script, and my test VM definition script will now look like this:&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#!/bin/bash
@@ -144,7 +144,7 @@ mac_address &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; sys&lt;span
 network &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; conn&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;networkLookupByName(sys&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;argv[&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;])
 flags &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (libvirt&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;VIR_NETWORK_UPDATE_AFFECT_LIVE &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt;
             libvirt&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;VIR_NETWORK_UPDATE_AFFECT_CONFIG)
-entry &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;format(
+entry &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;lt;host mac=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt; name=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt; ip=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;/&amp;gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;format(
         mac_address, dom_name, ip_address)
 network&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;update(
         libvirt&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;VIR_NETWORK_UPDATE_COMMAND_ADD_LAST,
