@@ -145,7 +145,7 @@ network<span style="color:#f92672">.</span>create()
 </code></pre></div><p>Then it destroys and starts the network if needed.</p>
 <p>This is not to pleasant, but it mostly works fine. However, I revisited the issue again, for reasons I cannot recall. And found an <!-- raw HTML omitted -->old reply<!-- raw HTML omitted --> in the libvirt mailing list, where the net-update command was pointed out:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">virsh net-update default add-last ip-dhcp-host <span style="color:#ae81ff">\
-</span><span style="color:#ae81ff"></span>&lt;host mac<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;52:54:00:8a:7b:9d&#39;</span> name<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;fc_host&#39;</span> ip<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;192.168.122.45&#39;</span>/&gt; <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span><span style="color:#e6db74">&#34;&lt;host mac=&#39;52:54:00:8a:7b:9d&#39; name=&#39;fc_host&#39; ip=&#39;192.168.122.45&#39;/&gt;&#34;</span> <span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span>--live --config
 </code></pre></div><p>Which I find very convenient, since I can simply do what I wanted without restarting the network and I can throw away the Python script, and my test VM definition script will now look like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e">#!/bin/bash
