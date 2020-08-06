@@ -84,7 +84,7 @@
 </code></pre>
 <p>Googling around I came across the solution of simply adding the following element to the network definition:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#f92672">&lt;host</span> <span style="color:#a6e22e">mac=</span><span style="color:#e6db74">&#39;52:54:00:8a:7b:9d&#39;</span> <span style="color:#a6e22e">name=</span><span style="color:#e6db74">&#39;fc_host&#39;</span> <span style="color:#a6e22e">ip=</span><span style="color:#e6db74">&#39;192.168.122.45&#39;</span><span style="color:#f92672">/&gt;</span>
-</code></pre></div><p>However, this requires recreating the network. Since I wanted the starting of my test VM to be scripted, editing the network configuration using virsh seemed quite tedious. So instead, I resorted to using the Python SDK, and came up with the following code (my Python skill is quite lacking, so it is not very good, but it does the job):</p>
+</code></pre></div><p>However, this requires recreating the network. Since I wanted the starting of my test VM to be scripted, editing the network configuration using <code>virsh</code> seemed quite tedious. So instead, I resorted to using the Python SDK, and came up with the following code (my Python skill is quite lacking, so it is not very good, but it does the job):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/bin/python</span>
 <span style="color:#f92672">import</span> libvirt
 <span style="color:#f92672">import</span> sys
@@ -124,7 +124,7 @@ xml_root <span style="color:#f92672">=</span> ET<span style="color:#f92672">.</s
 dhcp_section <span style="color:#f92672">=</span> find_dhcp(xml_root)
 
 <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> should_update(dhcp_section, mac_address, ip_address):
-    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#34;ip already configured&#34;</span>)
+    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#34;IP address is already configured&#34;</span>)
     sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">0</span>)
 
 updated_network <span style="color:#f92672">=</span> update_network(
@@ -151,7 +151,7 @@ network<span style="color:#f92672">.</span>create()
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e">#!/bin/bash
 </span><span style="color:#75715e"></span>echo <span style="color:#e6db74">&#34;Defining VM...&#34;</span>
 
-VM_NAME<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>1<span style="color:#66d9ef">:-</span><span style="color:#e6db74">&#34;fc_host&#34;</span><span style="color:#e6db74">}</span>
+VM_NAME<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>1<span style="color:#66d9ef">:-</span><span style="color:#e6db74">&#34;fchost&#34;</span><span style="color:#e6db74">}</span>
 LIBVIRT_NETWORK<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>2<span style="color:#66d9ef">:-</span><span style="color:#e6db74">&#34;default&#34;</span><span style="color:#e6db74">}</span>
 VM_IP<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>3<span style="color:#66d9ef">:-</span><span style="color:#e6db74">&#34;192.168.122.45&#34;</span><span style="color:#e6db74">}</span>
 
@@ -176,14 +176,16 @@ fc_host_status<span style="color:#f92672">=</span><span style="color:#66d9ef">$(
     exit <span style="color:#ae81ff">0</span>
 <span style="color:#66d9ef">fi</span>
 
-MAC_ADDRESS<span style="color:#f92672">=</span><span style="color:#66d9ef">$(</span>virsh dumpxml <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>VM_NAME<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span> | grep <span style="color:#e6db74">&#34;mac address&#34;</span> | awk -F<span style="color:#ae81ff">\&#39;</span> <span style="color:#e6db74">&#39;{ print $2}&#39;</span><span style="color:#66d9ef">)</span>
+mac_address<span style="color:#f92672">=</span><span style="color:#66d9ef">$(</span>virsh dumpxml <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>VM_NAME<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span> | grep <span style="color:#e6db74">&#34;mac address&#34;</span> | awk -F<span style="color:#ae81ff">\&#39;</span> <span style="color:#e6db74">&#39;{ print $2}&#39;</span><span style="color:#66d9ef">)</span>
 echo <span style="color:#e6db74">&#34;Setting IP address to </span><span style="color:#e6db74">${</span>VM_IP<span style="color:#e6db74">}</span><span style="color:#e6db74"> for MAC address </span><span style="color:#e6db74">${</span>MAC_ADDRESS<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
 
-xml_entry<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;&lt;host mac=\&#34;</span><span style="color:#e6db74">${</span>MAC_ADDRESS<span style="color:#e6db74">}</span><span style="color:#e6db74">\&#34; name=\&#34;</span><span style="color:#e6db74">${</span>VM_NAME<span style="color:#e6db74">}</span><span style="color:#e6db74">\&#34; ip=\&#34;</span><span style="color:#e6db74">${</span>VM_IP<span style="color:#e6db74">}</span><span style="color:#e6db74">\&#34;/&gt;&#34;</span>
+xml_entry<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;&lt;host mac=\&#34;</span><span style="color:#e6db74">${</span>mac_address<span style="color:#e6db74">}</span><span style="color:#e6db74">\&#34; name=\&#34;</span><span style="color:#e6db74">${</span>VM_NAME<span style="color:#e6db74">}</span><span style="color:#e6db74">\&#34; ip=\&#34;</span><span style="color:#e6db74">${</span>VM_IP<span style="color:#e6db74">}</span><span style="color:#e6db74">\&#34;/&gt;&#34;</span>
+
+<span style="color:#75715e"># TODO: check both IP and MAC, since this wouldn&#39;t work if we use a new VM after previously defining one</span>
 <span style="color:#66d9ef">if</span> virsh net-dumpxml <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>LIBVIRT_NETWORK<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span> | grep -q <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>VM_NAME<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>; <span style="color:#66d9ef">then</span>
-     echo <span style="color:#e6db74">&#34;IP address is already configured&#34;</span>
+    echo <span style="color:#e6db74">&#34;IP address is already configured&#34;</span>
 <span style="color:#66d9ef">else</span>
-     virsh net-update default add-last ip-dhcp-host <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>xml_entry<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span> --live --config
+    virsh net-update <span style="color:#e6db74">${</span>LIBVIRT_NETWORK<span style="color:#e6db74">}</span> add-last ip-dhcp-host <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>xml_entry<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span> --live --config
 <span style="color:#66d9ef">fi</span>
 
 echo <span style="color:#e6db74">&#34;starting </span><span style="color:#e6db74">${</span>VM_NAME<span style="color:#e6db74">}</span><span style="color:#e6db74">...&#34;</span>
