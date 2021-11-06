@@ -5,9 +5,9 @@ draft = false
 +++
 As part of the work on my pet project, [catapult](https://github.com/PUMATeam/catapult) (on which I will expand in another post), I was looking for a way to set a static IP address for a VM managed by libvirt. This VM serves me as the testing host which I use for development. Having the same IP always provides a couple of benefits:
 
-	1. Using the same API parameters whenever I test
-	2. I can easily script the deployment of the test host for other to use
-	3. Will be super useful when I finally start writing the system tests
+1. Using the same API parameters whenever I test
+2. I can easily script the deployment of the test host for other to use
+3. Will be super useful when I finally start writing the system tests
 
 Googling around I came across the solution of simply adding the following element to the network definition:
 
