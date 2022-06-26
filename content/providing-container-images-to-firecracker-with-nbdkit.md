@@ -7,6 +7,7 @@ date = 2022-06-26
 Important note before I begin: Unforunately, this is not really practical for actual use since currently the OCI image format specifies that layers have to be in `tar` format, and a tar archive cannot be randomly accessed. But I decided to procceed anyway since this looked like a good oppurtunity to learn something new, like using `initrd`.
 
 I had this idea to start [Firecracker micro VMs](https://firecracker-microvm.github.io/) with OCI images, without pulling it with, say, `docker pull`, but just by providing the layer's digest. 
+Like I said, this isn't very practical because of how `tar` works, but what I wanted to do is to expose the a remote root filesystem layer using an [NBD](https://en.wikipedia.org/wiki/Network_block_device) server with [nbdkit](https://libguestfs.org/nbdkit.1.html), and provide this NBD device to the Firecracker VM. 
 
 ## Setting Up the Docker Registry
 
@@ -159,7 +160,7 @@ umount /tmp
 umount /dev
 
 # Switch root
-exec switch_root /new_root /sbin/init
+exec switch_root /new_root /lib/systemd/systemd # I was too lazy to create a link to /sbin/init
 EOF
 
 chmod +x init
@@ -196,7 +197,7 @@ $ find . -print0 | cpio --null --create --verbose --format=newc > initrd.cpio
 
 The full script can be found [here](https://gist.github.com/bennyz/b96f01b7f7c447927502b48b22051c26)
 
-Now I have the `initrd` ready, I can finally create the micro VM, I will use a configuration file:
+Now I have the `initrd` ready, I can finally create the VM, I will use a configuration file:
 
 ```shell
 # Notes: hello-vmlinux.bin is the official example kernel, taken from:
