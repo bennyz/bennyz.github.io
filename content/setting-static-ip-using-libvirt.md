@@ -3,7 +3,7 @@ title = "Setting Static IP Using Libvirt"
 date = 2019-12-27T18:32:51+02:00
 draft = false
 +++
-As part of the work on my pet project, [catapult](https://github.com/PUMATeam/catapult) (on which I will expand in another post), I was looking for a way to set a static IP address for a VM managed by libvirt. This VM serves me as the testing host which I use for development. Having the same IP always provides a couple of benefits:
+As part of the work on my pet project, [catapult](https://github.com/PUMATeam/catapult), I was looking for a way to set a static IP address for a VM managed by libvirt. This VM serves me as the testing host which I use for development. Having the same IP always provides a couple of benefits:
 
 1. Using the same API parameters whenever I test
 2. I can easily script the deployment of the test host for other to use
