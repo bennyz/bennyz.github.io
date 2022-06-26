@@ -26,7 +26,7 @@ $ curl http://localhost:5000/v2/_catalog
 
 ## Preparing a Container Image
 
-Since containers only run a single program they lack an init process. To add it, I will modify an existing image:
+Since containers _usually_ only run a single program they lack an init process. To add it, I will modify an existing image:
 
 ```shell
 $ docker run -it python bash
@@ -226,7 +226,7 @@ $ cat vmconfig-initrd.json
 Since initrd is run in-memory, there needs to be enough of it to do the `tar` extraction. Another important note, is that the rootfs drive should be marked as `is_root_device: false`, because Firecracker passes the initrd as the root filesystem device.
 
 Note:
-The `init` script creates a loop block device on which an ext2 filesystem is created. The `tar` I use contains an ext4 filesystem, but it still works. BusyBox doesn't come with newer filesystems, likely on purpose, so if I wanted to use ext4 I would have to provide `e2fsprogs` myself.
+The `init` script creates a loop block device on which an `ext2` filesystem is created. The `tar` I use contains an ext4 filesystem, but it still works. BusyBox doesn't come with newer filesystems, likely on purpose, so if I wanted to use `ext4` I would have to provide `e2fsprogs` myself.
 
 ## Run the Thing
 
