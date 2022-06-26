@@ -3,13 +3,14 @@ title = "Providing Conainer Images to Firecracker with nbdkit"
 date = 2022-06-26
 +++
 
-I had this idea to start [Firecracker micro VMs](https://firecracker-microvm.github.io/) with OCI images, without pulling it with, say, `docker pull`, but just by providing a layer's digest. 
 
-Note: Unforunately, this is not really practical for actual use since currently the OCI image format specifies that layers have to be in `tar` format, and tar cannot be randomly accessed. But I decided to procceed anyway since this looked like a good oppurtunity to learn some new things, and I personally think there is great value in understanding why things *don't* work.
+Important note before I begin: Unforunately, this is not really practical for actual use since currently the OCI image format specifies that layers have to be in `tar` format, and a tar archive cannot be randomly accessed. But I decided to procceed anyway since this looked like a good oppurtunity to learn something new, like using `initrd`.
+
+I had this idea to start [Firecracker micro VMs](https://firecracker-microvm.github.io/) with OCI images, without pulling it with, say, `docker pull`, but just by providing the layer's digest. 
 
 ## Setting Up the Docker Registry
 
-Firecracker requires a root file system and a kernel image. I can use any supported kernel image in this, as it doesn't matter. To provide the root file system some work is going to be required.
+Firecracker requires a root file system and a kernel image. I can use any supported kernel image in this exercise. To provide the root file system some work is going to be required.
 To start I setup a local registry to avoid having to deal with authentication and rate limits, this is as simple as:
 
 ```shell
@@ -25,7 +26,7 @@ $ curl http://localhost:5000/v2/_catalog
 
 ## Preparing a Container Image
 
-Since container only run a single program they lack an init process. To add it, I will modify an existing image:
+Since containers only run a single program they lack an init process. To add it, I will modify an existing image:
 
 ```shell
 $ docker run -it python bash
@@ -94,7 +95,7 @@ export="":
         can_zero: false
 ```
 
-And now I have the `tar`ed root file system exposed via an NBD server, I can map it to a device:
+And now I have the `tar`ed root file system exposed via an NBD server, I will map it to a device because the "nbd://" URI scheme is not supported:
 
 ```shell
 # Load the nbd kernel module
@@ -107,12 +108,12 @@ $ sudo nbd-client localhost 10809 /dev/nbd0
 sudo chown ${USER} /dev/nbd0
 ```
 
-Now I can use `/dev/nbd0` as the path of the drive in Firecracker's configuarion. However, it will not boot because, the path contains a tar, so I need to somehow extract the filesystem inside this tar.
+Now I can use `/dev/nbd0` as the path of the drive in Firecracker's configuration. However, it will not boot because the path is a `tar` archive, so I need to somehow extract the filesystem inside this `tar`.
 
 ## In Comes initrd
 
-Not too long, support for [initrd](https://en.wikipedia.org/wiki/Initial_ramdisk) was added to Firecracker. By using an initrd, I can do things before the kernel loads the real root filesystem, archived in a tar on /dev/nbd0.
-What I essentially do, is I use the device attached to Firecracker, containing the `tar`ed root filesystem, and extract it. Then it can be used to load system as it's an actual file system.
+Not too long ago, support for [initrd](https://en.wikipedia.org/wiki/Initial_ramdisk) was added to Firecracker. By using an `initrd`, I can do things before the kernel loads the real root filesystem that is archived in a `tar` on `/dev/nbd0`.
+What I essentially do is, I use the `/dev/nbd0` device which is now attached to Firecracker, containing the `tar`ed root filesystem, and extract it. Then it can be used to load the system as it's an actual filesystem.
 
 Let's start by creating a work directory and populate it with all the goodness needed by initrd:
 
@@ -121,7 +122,7 @@ mkdir /tmp/initrd
 mkdir -p bin dev etc home mnt proc sys tmp usr
 ```
 
-Now I have the basic layout of the initrd, and I need to create the init script the will be actually run:
+Now I have the basic layout of the initrd, and I need to create the `init` script that will be executed to load the real root filesystem:
 
 ```shell
 pushd /tmp/initrd
@@ -195,7 +196,7 @@ $ find . -print0 | cpio --null --create --verbose --format=newc > initrd.cpio
 
 The full script can be found [here](https://gist.github.com/bennyz/b96f01b7f7c447927502b48b22051c26)
 
-Now I have the `initrd` ready, I can finally create the micro VM, this will be the configuration:
+Now I have the `initrd` ready, I can finally create the micro VM, I will use a configuration file:
 
 ```shell
 # Notes: hello-vmlinux.bin is the official example kernel, taken from:
@@ -225,7 +226,7 @@ $ cat vmconfig-initrd.json
 Since initrd is run in-memory, there needs to be enough of it to do the `tar` extraction. Another important note, is that the rootfs drive should be marked as `is_root_device: false`, because Firecracker passes the initrd as the root filesystem device.
 
 Note:
-The `init` script creates a loop block, on which an ext2 filesystem is created. The `tar` I use contains an ext4 filesystem, but it still works. BusyBox doesn't come with newer filesystems, likely on purpose, so if I wanted to use ext4 I would have to provide `e2fsprogs` myself.
+The `init` script creates a loop block device on which an ext2 filesystem is created. The `tar` I use contains an ext4 filesystem, but it still works. BusyBox doesn't come with newer filesystems, likely on purpose, so if I wanted to use ext4 I would have to provide `e2fsprogs` myself.
 
 ## Run the Thing
 
