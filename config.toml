@@ -8,7 +8,7 @@ compile_sass = true
 build_search_index = true
 
 title = "Technical Notes"
-theme = "slim"
+theme = "lightspeed"
 
 taxonomies = [
     {name = "tags", paginate_by = 5, rss = true}
