@@ -1,5 +1,5 @@
 +++
-title = "Running Conainer Images on Firecracker VMs with nbdkit"
+title = "Running Container Images on Firecracker VMs with nbdkit"
 date = 2022-06-26
 +++
 
