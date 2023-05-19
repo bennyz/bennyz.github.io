@@ -8,7 +8,7 @@ compile_sass = true
 build_search_index = true
 
 title = "Technical Notes"
-theme = "anpu"
+theme = "even"
 
 taxonomies = [
     {name = "tags", paginate_by = 5, rss = true}
@@ -18,5 +18,8 @@ taxonomies = [
 highlight_code = true
 
 [extra]
-title = "Technical Notes"
-description = "Personal blog"
+even_title = "Technical Notes"
+even_menu = [
+    {url = "$BASE_URL", name = "Home"},
+    {url = "$BASE_URL/tags", name = "Tags"},
+]
