@@ -20,4 +20,4 @@ taxonomies = [
 highlight_code = true
 
 [extra]
-# Put all your custom variables here
+even_title = "Technical Notes"
