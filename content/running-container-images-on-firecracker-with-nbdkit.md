@@ -1,6 +1,7 @@
 +++
 title = "Running Container Images on Firecracker VMs with nbdkit"
 date = 2022-06-26
+base_url = "https://bennyz.github.io/running-container-images-on-firecracker-with-nbdkit/"
 +++
 
 
