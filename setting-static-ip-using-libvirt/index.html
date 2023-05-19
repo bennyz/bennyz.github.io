@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <!-- Enable responsiveness on mobile devices-->
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    
+      
+    
+
+      <title>Technical Notes - Setting Static IP Using Libvirt</title>
+
+      
+
+      
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/slideout/1.0.1/slideout.min.js"></script>
+          
+      
+
+      
+          <link rel="stylesheet" href="https://bennyz.github.io/site.css">
+          
+      
+
+      
+      
+    </head>
+
+    <body>
+        <div class="container">
+
+            <div id="mobile-navbar" class="mobile-navbar">
+              <div class="mobile-header-logo">
+                <a href="/" class="logo">Technical Notes</a>
+              </div>
+              <div class="mobile-navbar-icon icon-out">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+
+            <nav id="mobile-menu" class="mobile-menu slideout-menu slideout-menu-left">
+              <ul class="mobile-menu-list">
+                
+                    <li class="mobile-menu-item">
+                        <a href="https:&#x2F;&#x2F;bennyz.github.io">
+                            Home
+                        </a>
+                    </li>
+                
+                    <li class="mobile-menu-item">
+                        <a href="https:&#x2F;&#x2F;bennyz.github.io&#x2F;tags">
+                            Tags
+                        </a>
+                    </li>
+                
+              </ul>
+            </nav>
+
+            <header id="header">
+                <div class="logo"><a href="https:&#x2F;&#x2F;bennyz.github.io">Technical Notes</a></div>
+                <nav class="menu">
+                    <ul>
+                        
+                            <li>
+                                <a href="https:&#x2F;&#x2F;bennyz.github.io">
+                                    Home
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="https:&#x2F;&#x2F;bennyz.github.io&#x2F;tags">
+                                    Tags
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </nav>
+            </header>
+
+            <main>
+                <div class="content" id="mobile-panel">
+                    
+
+
+
+<article class="post">
+    
+    <header class="post__header">
+        <h1 class="post__title">
+            <a href="https:&#x2F;&#x2F;bennyz.github.io&#x2F;setting-static-ip-using-libvirt&#x2F;">Setting Static IP Using Libvirt</a>
+        </h1>
+        <div class="post__meta">
+            <span class="post__time">2019-12-27</span>
+            
+        </div>
+    </header>
+
+    <div class="post-content">
+      <p>As part of the work on my pet project, <a href="https://github.com/PUMATeam/catapult">catapult</a>, I was looking for a way to set a static IP address for a VM managed by libvirt. This VM serves me as the testing host which I use for development. Having the same IP always provides a couple of benefits:</p>
+<ol>
+<li>Using the same API parameters whenever I test</li>
+<li>I can easily script the deployment of the test host for other to use</li>
+<li>Will be super useful when I finally start writing the system tests</li>
+</ol>
+<p>Googling around I came across the solution of simply adding the following element to the network definition:</p>
+<pre data-lang="xml" style="background-color:#2b303b;color:#c0c5ce;" class="language-xml "><code class="language-xml" data-lang="xml"><span>&lt;</span><span style="color:#bf616a;">host </span><span style="color:#d08770;">mac</span><span>=&#39;</span><span style="color:#a3be8c;">52:54:00:8a:7b:9d</span><span>&#39; </span><span style="color:#d08770;">name</span><span>=&#39;</span><span style="color:#a3be8c;">fc_host</span><span>&#39; </span><span style="color:#d08770;">ip</span><span>=&#39;</span><span style="color:#a3be8c;">192.168.122.45</span><span>&#39;/&gt;
+</span></code></pre>
+<p>However, this requires recreating the network. Since I wanted the starting of my test VM to be scripted, editing the network configuration using <code>virsh</code> seemed quite tedious. So instead, I resorted to using the Python SDK, and came up with the following code (my Python skill is quite lacking, so it is not very good, but it does the job):</p>
+<pre data-lang="python" style="background-color:#2b303b;color:#c0c5ce;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#65737e;">#!/bin/python
+</span><span style="color:#b48ead;">import </span><span>libvirt
+</span><span style="color:#b48ead;">import </span><span>sys
+</span><span>
+</span><span style="color:#b48ead;">from </span><span>xml.etree </span><span style="color:#b48ead;">import </span><span>ElementTree </span><span style="color:#b48ead;">as </span><span style="color:#bf616a;">ET
+</span><span>
+</span><span style="color:#b48ead;">def </span><span style="color:#8fa1b3;">should_update</span><span>(</span><span style="color:#bf616a;">section</span><span>, </span><span style="color:#bf616a;">mac</span><span>, </span><span style="color:#bf616a;">ip</span><span>):
+</span><span>    </span><span style="color:#b48ead;">for </span><span>node </span><span style="color:#b48ead;">in </span><span>section.</span><span style="color:#bf616a;">findall</span><span>(&quot;</span><span style="color:#a3be8c;">.//host</span><span>&quot;):
+</span><span>        </span><span style="color:#b48ead;">if </span><span>node.attrib[&quot;</span><span style="color:#a3be8c;">mac</span><span>&quot;] == mac and node.attrib[&quot;</span><span style="color:#a3be8c;">ip</span><span>&quot;] == ip:
+</span><span>            </span><span style="color:#b48ead;">return </span><span style="color:#d08770;">False
+</span><span>
+</span><span>    </span><span style="color:#b48ead;">return </span><span style="color:#d08770;">True
+</span><span>
+</span><span style="color:#b48ead;">def </span><span style="color:#8fa1b3;">find_dhcp</span><span>(</span><span style="color:#bf616a;">root</span><span>):
+</span><span>    dhcp_section = root.</span><span style="color:#bf616a;">find</span><span>(&quot;</span><span style="color:#a3be8c;">./ip/dhcp</span><span>&quot;)
+</span><span>    </span><span style="color:#b48ead;">return </span><span>dhcp_section
+</span><span>
+</span><span style="color:#b48ead;">def </span><span style="color:#8fa1b3;">update_network</span><span>(</span><span style="color:#bf616a;">dom_name</span><span>, </span><span style="color:#bf616a;">root</span><span>, </span><span style="color:#bf616a;">mac</span><span>, </span><span style="color:#bf616a;">ip</span><span>, </span><span style="color:#bf616a;">dhcp_section</span><span>):
+</span><span>    host = ET.</span><span style="color:#bf616a;">Element</span><span>(&quot;</span><span style="color:#a3be8c;">host</span><span>&quot;, </span><span style="color:#bf616a;">mac</span><span>=mac, </span><span style="color:#bf616a;">name</span><span>=dom_name, </span><span style="color:#bf616a;">ip</span><span>=ip)
+</span><span>    dhcp_section.</span><span style="color:#bf616a;">append</span><span>(host)
+</span><span>
+</span><span>    </span><span style="color:#b48ead;">return </span><span>ET.</span><span style="color:#bf616a;">tostring</span><span>(root).</span><span style="color:#bf616a;">decode</span><span>()
+</span><span>conn = libvirt.</span><span style="color:#bf616a;">open</span><span>(&quot;</span><span style="color:#a3be8c;">qemu:///system</span><span>&quot;)
+</span><span>
+</span><span>dom_name = sys.argv[</span><span style="color:#d08770;">1</span><span>]
+</span><span style="color:#b48ead;">try</span><span>:
+</span><span>    dom = conn.</span><span style="color:#bf616a;">lookupByName</span><span>(dom_name)
+</span><span style="color:#b48ead;">except</span><span>:
+</span><span>    sys.</span><span style="color:#bf616a;">exit</span><span>(-</span><span style="color:#d08770;">1</span><span>)
+</span><span>
+</span><span>ip_address = sys.argv[</span><span style="color:#d08770;">3</span><span>]
+</span><span>mac_address = sys.argv[</span><span style="color:#d08770;">4</span><span>]
+</span><span>
+</span><span>network = conn.</span><span style="color:#bf616a;">networkLookupByName</span><span>(sys.argv[</span><span style="color:#d08770;">2</span><span>])
+</span><span>network_xml = network.</span><span style="color:#bf616a;">XMLDesc</span><span>(</span><span style="color:#d08770;">0</span><span>)
+</span><span>xml_root = ET.</span><span style="color:#bf616a;">fromstring</span><span>(network_xml)
+</span><span>dhcp_section = </span><span style="color:#bf616a;">find_dhcp</span><span>(xml_root)
+</span><span>
+</span><span style="color:#b48ead;">if </span><span>not </span><span style="color:#bf616a;">should_update</span><span>(dhcp_section, mac_address, ip_address):
+</span><span>    </span><span style="color:#96b5b4;">print</span><span>(&quot;</span><span style="color:#a3be8c;">IP address is already configured</span><span>&quot;)
+</span><span>    sys.</span><span style="color:#bf616a;">exit</span><span>(</span><span style="color:#d08770;">0</span><span>)
+</span><span>
+</span><span>updated_network = </span><span style="color:#bf616a;">update_network</span><span>(
+</span><span>        dom_name,
+</span><span>        xml_root,
+</span><span>        mac_address,
+</span><span>        ip_address,
+</span><span>        dhcp_section)
+</span><span>
+</span><span style="color:#b48ead;">if </span><span>network.</span><span style="color:#bf616a;">isActive</span><span>():
+</span><span>    network.</span><span style="color:#bf616a;">destroy</span><span>()
+</span><span>
+</span><span>network = conn.</span><span style="color:#bf616a;">networkDefineXML</span><span>(updated_network)
+</span><span>network.</span><span style="color:#bf616a;">setAutostart</span><span>(</span><span style="color:#d08770;">True</span><span>)
+</span><span>network.</span><span style="color:#bf616a;">create</span><span>()
+</span></code></pre>
+<p>So this code doesn't do much other than check the DHCP configuration of the network,  then injects the XML element to the network definition</p>
+<pre data-lang="xml" style="background-color:#2b303b;color:#c0c5ce;" class="language-xml "><code class="language-xml" data-lang="xml"><span>&lt;</span><span style="color:#bf616a;">host </span><span style="color:#d08770;">mac</span><span>=&#39;</span><span style="color:#a3be8c;">52:54:00:8a:7b:9d</span><span>&#39; </span><span style="color:#d08770;">name</span><span>=&#39;</span><span style="color:#a3be8c;">fc_host</span><span>&#39; </span><span style="color:#d08770;">ip</span><span>=&#39;</span><span style="color:#a3be8c;">192.168.122.45</span><span>&#39;/&gt;
+</span></code></pre>
+<p>Then it destroys and starts the network if needed.</p>
+<p>This is not to pleasant, but it mostly works fine. However, I revisited the issue again, for reasons I cannot recall. And found an <a href="https://www.redhat.com/archives/libvirt-users/2014-March/msg00110.html" target="_blank" rel="noopener">old reply</a> in the libvirt mailing list, where the net-update command was pointed out:</p>
+<pre data-lang="bash" style="background-color:#2b303b;color:#c0c5ce;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#bf616a;">virsh</span><span> net-update default add-last ip-dhcp-host \
+</span><span>&quot;</span><span style="color:#a3be8c;">&lt;host mac=&#39;52:54:00:8a:7b:9d&#39; name=&#39;fc_host&#39; ip=&#39;192.168.122.45&#39;/&gt;</span><span>&quot; \
+</span><span style="color:#bf616a;">--live --config
+</span></code></pre>
+<p>Which I find very convenient, since I can simply do what I wanted without restarting the network and I can throw away the Python script, and my test VM definition script will now look like this:</p>
+<pre data-lang="bash" style="background-color:#2b303b;color:#c0c5ce;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#65737e;">#!/bin/bash
+</span><span style="color:#96b5b4;">echo </span><span>&quot;</span><span style="color:#a3be8c;">Defining VM...</span><span>&quot;
+</span><span>
+</span><span style="color:#bf616a;">VM_NAME</span><span>=$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">1</span><span>:-&quot;</span><span style="color:#a3be8c;">fchost</span><span>&quot;</span><span style="color:#a3be8c;">}
+</span><span style="color:#bf616a;">LIBVIRT_NETWORK</span><span>=$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">2</span><span>:-&quot;</span><span style="color:#a3be8c;">default</span><span>&quot;</span><span style="color:#a3be8c;">}
+</span><span style="color:#bf616a;">VM_IP</span><span>=$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">3</span><span>:-&quot;</span><span style="color:#a3be8c;">192.168.122.45</span><span>&quot;</span><span style="color:#a3be8c;">}
+</span><span>
+</span><span style="color:#b48ead;">if </span><span style="color:#bf616a;">virsh</span><span> list</span><span style="color:#bf616a;"> --all </span><span>| </span><span style="color:#bf616a;">grep -q </span><span>&quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">}</span><span>&quot;; </span><span style="color:#b48ead;">then
+</span><span>    </span><span style="color:#96b5b4;">echo </span><span>&quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">} is already installed... </span><span>&quot;
+</span><span style="color:#b48ead;">else
+</span><span>    </span><span style="color:#bf616a;">dom</span><span>=$</span><span style="color:#a3be8c;">(</span><span style="color:#bf616a;">virt-install --import --name </span><span>&quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">}</span><span>&quot; </span><span style="color:#a3be8c;">\
+</span><span style="color:#bf616a;">        --memory</span><span style="color:#a3be8c;"> 1024</span><span style="color:#bf616a;"> --vcpus</span><span style="color:#a3be8c;"> 1</span><span style="color:#bf616a;"> --cpu</span><span style="color:#a3be8c;"> host \
+</span><span style="color:#bf616a;">        --disk</span><span style="color:#a3be8c;"> os.img,bus=virtio \
+</span><span style="color:#bf616a;">        --os-type</span><span>=</span><span style="color:#a3be8c;">linux \
+</span><span style="color:#bf616a;">        --graphics</span><span style="color:#a3be8c;"> spice \
+</span><span style="color:#bf616a;">        --noautoconsole </span><span style="color:#a3be8c;">\
+</span><span style="color:#bf616a;">        --network</span><span>=</span><span style="color:#a3be8c;">default,model=virtio \
+</span><span style="color:#bf616a;">        --connect</span><span style="color:#a3be8c;"> qemu:///system \
+</span><span style="color:#bf616a;">        --print-xml</span><span style="color:#a3be8c;">)
+</span><span>    </span><span style="color:#96b5b4;">echo </span><span>$</span><span style="color:#bf616a;">dom </span><span>| </span><span style="color:#bf616a;">virsh</span><span> define /dev/stdin
+</span><span style="color:#b48ead;">fi
+</span><span>
+</span><span style="color:#bf616a;">fc_host_status</span><span>=$</span><span style="color:#a3be8c;">(</span><span style="color:#bf616a;">virsh</span><span style="color:#a3be8c;"> list </span><span>| </span><span style="color:#bf616a;">grep</span><span style="color:#a3be8c;"> fc_host </span><span>| </span><span style="color:#bf616a;">tr -s </span><span style="color:#96b5b4;">\&quot;</span><span style="color:#b48ead;">[</span><span style="color:#a3be8c;">:blank:</span><span style="color:#b48ead;">]</span><span style="color:#96b5b4;">\&quot; </span><span>| </span><span style="color:#bf616a;">cut -d </span><span>&#39; &#39;</span><span style="color:#bf616a;"> -f4</span><span style="color:#a3be8c;">)
+</span><span style="color:#b48ead;">if </span><span style="color:#96b5b4;">[  </span><span>&quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">fc_hoststatus</span><span style="color:#a3be8c;">}</span><span>&quot; == &#39;</span><span style="color:#a3be8c;">running</span><span>&#39; </span><span style="color:#96b5b4;">]</span><span>; </span><span style="color:#b48ead;">then
+</span><span>    </span><span style="color:#96b5b4;">echo </span><span>&quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">} is already running</span><span>&quot;
+</span><span>    </span><span style="color:#96b5b4;">exit</span><span> 0
+</span><span style="color:#b48ead;">fi
+</span><span>
+</span><span style="color:#bf616a;">mac_address</span><span>=$</span><span style="color:#a3be8c;">(</span><span style="color:#bf616a;">virsh</span><span style="color:#a3be8c;"> dumpxml </span><span>&quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">}</span><span>&quot; | </span><span style="color:#bf616a;">grep </span><span>&quot;</span><span style="color:#a3be8c;">mac address</span><span>&quot; | </span><span style="color:#bf616a;">awk -F</span><span style="color:#96b5b4;">\&#39; </span><span>&#39;</span><span style="color:#a3be8c;">{ print $2}</span><span>&#39;</span><span style="color:#a3be8c;">)
+</span><span style="color:#96b5b4;">echo </span><span>&quot;</span><span style="color:#a3be8c;">Setting IP address to </span><span>$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_IP</span><span style="color:#a3be8c;">} for MAC address </span><span>$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">MAC_ADDRESS</span><span style="color:#a3be8c;">}</span><span>&quot;
+</span><span>
+</span><span style="color:#bf616a;">xml_entry</span><span>=&quot;</span><span style="color:#a3be8c;">&lt;host mac=</span><span style="color:#96b5b4;">\&quot;</span><span>$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">mac_address</span><span style="color:#a3be8c;">}</span><span style="color:#96b5b4;">\&quot;</span><span style="color:#a3be8c;"> name=</span><span style="color:#96b5b4;">\&quot;</span><span>$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">}</span><span style="color:#96b5b4;">\&quot;</span><span style="color:#a3be8c;"> ip=</span><span style="color:#96b5b4;">\&quot;</span><span>$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_IP</span><span style="color:#a3be8c;">}</span><span style="color:#96b5b4;">\&quot;</span><span style="color:#a3be8c;">/&gt;</span><span>&quot;
+</span><span>
+</span><span style="color:#65737e;"># TODO: check both IP and MAC, since this wouldn&#39;t work if we use a new VM after previously defining one
+</span><span style="color:#b48ead;">if </span><span style="color:#bf616a;">virsh</span><span> net-dumpxml &quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">LIBVIRT_NETWORK</span><span style="color:#a3be8c;">}</span><span>&quot; | </span><span style="color:#bf616a;">grep -q </span><span>&quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">}</span><span>&quot;; </span><span style="color:#b48ead;">then
+</span><span>    </span><span style="color:#96b5b4;">echo </span><span>&quot;</span><span style="color:#a3be8c;">IP address is already configured</span><span>&quot;
+</span><span style="color:#b48ead;">else
+</span><span>    </span><span style="color:#bf616a;">virsh</span><span> net-update ${</span><span style="color:#bf616a;">LIBVIRT_NETWORK</span><span>} add-last ip-dhcp-host &quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">xml_entry</span><span style="color:#a3be8c;">}</span><span>&quot;</span><span style="color:#bf616a;"> --live --config
+</span><span style="color:#b48ead;">fi
+</span><span>
+</span><span style="color:#96b5b4;">echo </span><span>&quot;</span><span style="color:#a3be8c;">starting </span><span>$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">}...</span><span>&quot;
+</span><span style="color:#bf616a;">virsh</span><span> start &quot;$</span><span style="color:#a3be8c;">{</span><span style="color:#bf616a;">VM_NAME</span><span style="color:#a3be8c;">}</span><span>&quot;
+</span></code></pre>
+<p>If I still wanted to use python to do this, it would be much simpler:</p>
+<pre data-lang="python" style="background-color:#2b303b;color:#c0c5ce;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#b48ead;">import </span><span>libvirt
+</span><span style="color:#b48ead;">import </span><span>sys
+</span><span>
+</span><span>conn = libvirt.</span><span style="color:#bf616a;">open</span><span>(&#39;</span><span style="color:#a3be8c;">qemu:///system</span><span>&#39;)
+</span><span>dom_name = sys.argv[</span><span style="color:#d08770;">1</span><span>]
+</span><span>
+</span><span style="color:#b48ead;">try</span><span>:
+</span><span>    dom = conn.</span><span style="color:#bf616a;">lookupByName</span><span>(dom_name)
+</span><span style="color:#b48ead;">except</span><span>:
+</span><span>    sys.</span><span style="color:#bf616a;">exit</span><span>(-</span><span style="color:#d08770;">1</span><span>)
+</span><span>
+</span><span>ip_address = sys.argv[</span><span style="color:#d08770;">3</span><span>]
+</span><span>mac_address = sys.argv[</span><span style="color:#d08770;">4</span><span>]
+</span><span>
+</span><span>network = conn.</span><span style="color:#bf616a;">networkLookupByName</span><span>(sys.argv[</span><span style="color:#d08770;">2</span><span>])
+</span><span>flags = (libvirt.</span><span style="color:#bf616a;">VIR_NETWORK_UPDATE_AFFECT_LIVE </span><span>|
+</span><span>            libvirt.</span><span style="color:#bf616a;">VIR_NETWORK_UPDATE_AFFECT_CONFIG</span><span>)
+</span><span>entry = &quot;</span><span style="color:#a3be8c;">&lt;host mac=&#39;</span><span style="color:#d08770;">{}</span><span style="color:#a3be8c;">&#39; name=&#39;</span><span style="color:#d08770;">{}</span><span style="color:#a3be8c;">&#39; ip=&#39;</span><span style="color:#d08770;">{}</span><span style="color:#a3be8c;">&#39;/&gt;</span><span>&quot;.</span><span style="color:#bf616a;">format</span><span>(
+</span><span>        mac_address, dom_name, ip_address)
+</span><span>network.</span><span style="color:#bf616a;">update</span><span>(
+</span><span>        libvirt.</span><span style="color:#bf616a;">VIR_NETWORK_UPDATE_COMMAND_ADD_LAST</span><span>,
+</span><span>        libvirt.</span><span style="color:#bf616a;">VIR_NETWORK_SECTION_IP_DHCP_HOST</span><span>,
+</span><span>        </span><span style="color:#d08770;">0</span><span>,
+</span><span>        entry,
+</span><span>        flags)
+</span></code></pre>
+<p>_</p>
+
+    </div>
+
+    
+    
+
+    <div class="post-footer">
+        
+            
+            
+                <div class="post-nav">
+                    
+                        <a class="previous" href="https:&#x2F;&#x2F;bennyz.github.io&#x2F;running-container-images-on-firecracker-with-nbdkit&#x2F;">‹ Running Container Images on Firecracker VMs with nbdkit</a>
+                    
+                    
+                </div>
+            
+
+        
+
+    </div>
+
+    
+    
+</article>
+
+
+                </div>
+            </main>
+
+            
+            
+        </div>
+
+      
+          <script type="text/javascript" src="https://bennyz.github.io/even.js" ></script>
+      
+    </body>
+
+</html>

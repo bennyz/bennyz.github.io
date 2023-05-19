@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <!-- Enable responsiveness on mobile devices-->
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    
+      
+    
+
+      <title>Technical Notes - Running Container Images on Firecracker VMs with nbdkit</title>
+
+      
+
+      
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/slideout/1.0.1/slideout.min.js"></script>
+          
+      
+
+      
+          <link rel="stylesheet" href="https://bennyz.github.io/site.css">
+          
+      
+
+      
+      
+    </head>
+
+    <body>
+        <div class="container">
+
+            <div id="mobile-navbar" class="mobile-navbar">
+              <div class="mobile-header-logo">
+                <a href="/" class="logo">Technical Notes</a>
+              </div>
+              <div class="mobile-navbar-icon icon-out">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+
+            <nav id="mobile-menu" class="mobile-menu slideout-menu slideout-menu-left">
+              <ul class="mobile-menu-list">
+                
+                    <li class="mobile-menu-item">
+                        <a href="https:&#x2F;&#x2F;bennyz.github.io">
+                            Home
+                        </a>
+                    </li>
+                
+                    <li class="mobile-menu-item">
+                        <a href="https:&#x2F;&#x2F;bennyz.github.io&#x2F;tags">
+                            Tags
+                        </a>
+                    </li>
+                
+              </ul>
+            </nav>
+
+            <header id="header">
+                <div class="logo"><a href="https:&#x2F;&#x2F;bennyz.github.io">Technical Notes</a></div>
+                <nav class="menu">
+                    <ul>
+                        
+                            <li>
+                                <a href="https:&#x2F;&#x2F;bennyz.github.io">
+                                    Home
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="https:&#x2F;&#x2F;bennyz.github.io&#x2F;tags">
+                                    Tags
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </nav>
+            </header>
+
+            <main>
+                <div class="content" id="mobile-panel">
+                    
+
+
+<div class="post-toc" id="post-toc">
+    <h2 class="post-toc-title">Contents</h2>
+    <div class="post-toc-content always-active">
+        <nav id="TableOfContents">
+            <ul>
+                
+                <li>
+                    <a href="https://bennyz.github.io/running-container-images-on-firecracker-with-nbdkit/#setting-up-the-docker-registry" class="toc-link">Setting Up the Docker Registry</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="https://bennyz.github.io/running-container-images-on-firecracker-with-nbdkit/#preparing-a-container-image" class="toc-link">Preparing a Container Image</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="https://bennyz.github.io/running-container-images-on-firecracker-with-nbdkit/#exposing-the-root-filesystem-via-nbd" class="toc-link">Exposing the Root Filesystem via NBD</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="https://bennyz.github.io/running-container-images-on-firecracker-with-nbdkit/#in-comes-initrd" class="toc-link">In Comes initrd</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="https://bennyz.github.io/running-container-images-on-firecracker-with-nbdkit/#run-the-thing" class="toc-link">Run the Thing</a>
+                    
+                </li>
+                
+            </ul>
+        </nav>
+    </div>
+</div>
+
+
+<article class="post">
+    
+    <header class="post__header">
+        <h1 class="post__title">
+            <a href="https:&#x2F;&#x2F;bennyz.github.io&#x2F;running-container-images-on-firecracker-with-nbdkit&#x2F;">Running Container Images on Firecracker VMs with nbdkit</a>
+        </h1>
+        <div class="post__meta">
+            <span class="post__time">2022-06-26</span>
+            
+        </div>
+    </header>
+
+    <div class="post-content">
+      <p>Important note before I begin: Unforunately, this is not really practical for actual use since currently the OCI image format specifies that layers have to be in <code>tar</code> format, and a tar archive cannot be randomly accessed. But I decided to procceed anyway since this looked like a good oppurtunity to learn something new, like using <code>initrd</code>.</p>
+<p>I had this idea to start <a href="https://firecracker-microvm.github.io/">Firecracker micro VMs</a> with OCI images, without pulling it with, say, <code>docker pull</code>, but just by providing the layer's digest. 
+Like I said, this isn't very practical because of how <code>tar</code> works, but what I wanted to do is to expose the a remote root filesystem layer using an <a href="https://en.wikipedia.org/wiki/Network_block_device">NBD</a> server with <a href="https://libguestfs.org/nbdkit.1.html">nbdkit</a>, and provide this NBD device to the Firecracker VM. </p>
+<h2 id="setting-up-the-docker-registry">Setting Up the Docker Registry</h2>
+<p>Firecracker requires a root file system and a kernel image. I can use any supported kernel image in this exercise. To provide the root file system some work is going to be required.
+To start I setup a local registry to avoid having to deal with authentication and rate limits, this is as simple as:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>$ docker run -d -p 5000:5000 --name registry registry:2
+</span><span>eba0f7d77509a9d9d966df18fa33231250e1b4f2db6673e1273642414d9e9788
+</span></code></pre>
+<p>Let's do a small sanity check:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>$ curl http://localhost:5000/v2/_catalog
+</span><span>{&quot;repositories&quot;:[]}
+</span></code></pre>
+<h2 id="preparing-a-container-image">Preparing a Container Image</h2>
+<p>Since containers <em>usually</em> only run a single program they lack an init process. To add it, I will modify an existing image:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>$ docker run -it python bash
+</span><span>root@762a0427aa13:/# apt-get update
+</span><span>root@762a0427aa13:/# apt-get install systemd # systemd will be the init process
+</span><span>
+</span><span># Setup the tty
+</span><span>root@762a0427aa13:/# ln -s agetty /etc/init.d/agetty.ttyS0
+</span><span>root@762a0427aa13:/# echo ttyS0 &gt; /etc/securetty
+</span><span>root@762a0427aa13:/# systemctl enable getty@ttyS0
+</span><span># Set root password
+</span><span>root@762a0427aa13:/# passwd root
+</span></code></pre>
+<p>I made changes to the container, now I am going to export it, and import it back to upload a flat image to the registry:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>$ docker export --output=python.tar 762a0427aa13
+</span><span>
+</span><span># And import it back as flat-python:latest
+</span><span>$ docker import python.tar flat-python:latest
+</span><span>sha256:67d16081116dc3bf5fca2f633a4104bffedc785cb53069710a1e052001ca65f1
+</span></code></pre>
+<p>Now, upload it to the registry:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>$ docker tag flat-python:latest localhost:5000/flat-python
+</span><span>$ docker push localhost:5000/flat-python
+</span><span>Using default tag: latest
+</span><span>The push refers to repository [localhost:5000/flat-python]
+</span><span>ce2b37ca4342: Pushed
+</span><span>latest: digest: sha256:f16fbcc2845c385cef37211bf6a3587ca3ad390ad362cf67f56119592e874e83 size: 529
+</span></code></pre>
+<h2 id="exposing-the-root-filesystem-via-nbd">Exposing the Root Filesystem via NBD</h2>
+<p>So now I have a suitable OCI image layer to use as the root file system. I can expose it using <code>nbdkit</code>:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span># To find out the url to provide `nbdkit`&#39;s curl plugin, I&#39;ll query the manifest and because I flattened to image there is only one layer:
+</span><span>$ curl -s localhost:5000/v2/flat-python/manifests/latest | jq &#39;.fsLayers[].blobSum
+</span><span>&quot;sha256:cba57c55ee0f84a7d37c79d0524ff29be2856e7844430f8e212d87bb4a87e837&quot;
+</span><span>
+</span><span># Start nbdkit with the curl plugin, sending it through a gzip filter because in this case it&#39;s also gzipped:
+</span><span>$ nbdkit -r curl http://localhost:5000/v2/flat-python/blobs/sha256:cba57c55ee0f84a7d37c79d0524ff29be2856e7844430f8e212d87bb4a87e837 --filter=gzip
+</span><span>
+</span><span># Sanity check
+</span><span>nbdinfo nbd://localhost
+</span><span>protocol: newstyle-fixed without TLS
+</span><span>export=&quot;&quot;:
+</span><span>        export-size: 969963008
+</span><span>        content: POSIX tar archive
+</span><span>        uri: nbd://localhost:10809/
+</span><span>        contexts:
+</span><span>                base:allocation
+</span><span>        is_rotational: false
+</span><span>        is_read_only: true
+</span><span>        can_cache: true
+</span><span>        can_df: true
+</span><span>        can_fast_zero: false
+</span><span>        can_flush: false
+</span><span>        can_fua: false
+</span><span>        can_multi_conn: true
+</span><span>        can_trim: false
+</span><span>        can_zero: false
+</span></code></pre>
+<p>And now I have the <code>tar</code>ed root file system exposed via an NBD server, I will map it to a device because the &quot;nbd://&quot; URI scheme is not supported:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span># Load the nbd kernel module
+</span><span>$ sudo modprobe nbd
+</span><span>
+</span><span># Map the server
+</span><span>$ sudo nbd-client localhost 10809 /dev/nbd0
+</span><span>
+</span><span># Give myself permissions:
+</span><span>sudo chown ${USER} /dev/nbd0
+</span></code></pre>
+<p>Now I can use <code>/dev/nbd0</code> as the path of the drive in Firecracker's configuration. However, it will not boot because the path is a <code>tar</code> archive, so I need to somehow extract the filesystem inside this <code>tar</code>.</p>
+<h2 id="in-comes-initrd">In Comes initrd</h2>
+<p>Not too long ago, support for <a href="https://en.wikipedia.org/wiki/Initial_ramdisk">initrd</a> was added to Firecracker. By using an <code>initrd</code>, I can do things before the kernel loads the real root filesystem that is archived in a <code>tar</code> on <code>/dev/nbd0</code>.
+What I essentially do is, I use the <code>/dev/nbd0</code> device which is now attached to Firecracker, containing the <code>tar</code>ed root filesystem, and extract it. Then it can be used to load the system as it's an actual filesystem.</p>
+<p>Let's start by creating a work directory and populate it with all the goodness needed by initrd:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>mkdir /tmp/initrd
+</span><span>mkdir -p bin dev etc home mnt proc sys tmp usr
+</span></code></pre>
+<p>Now I have the basic layout of the initrd, and I need to create the <code>init</code> script that will be executed to load the real root filesystem:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>pushd /tmp/initrd
+</span><span>
+</span><span># Put the script in an init file
+</span><span>cat &gt;&gt; init &lt;&lt; EOF
+</span><span>#!/bin/busybox sh
+</span><span>
+</span><span>mount -t devtmpfs  devtmpfs  /dev
+</span><span>mount -t proc      proc      /proc
+</span><span>mount -t sysfs     sysfs     /sys
+</span><span>mount -t tmpfs     tmpfs     /tmp
+</span><span>
+</span><span># Create loop device backed by a file
+</span><span>truncate -s 2G fs
+</span><span># Why loop5? I don&#39;t know
+</span><span>losetup /dev/loop5 fs
+</span><span>mkfs.ext2 /dev/loop5
+</span><span>
+</span><span># Extract tar file exposed via /dev/vda to temporary directory
+</span><span>mkdir mnt_fs
+</span><span>mount -o loop /dev/loop5 mnt_fs
+</span><span>tar -C mnt_fs -xf /dev/vda
+</span><span>umount /mnt_fs
+</span><span>
+</span><span># Mount extract rootfs
+</span><span>mkdir new_root
+</span><span>mount -t ext2 /dev/loop5 /new_root
+</span><span>
+</span><span># Cleanup
+</span><span>umount /proc
+</span><span>umount /sys
+</span><span>umount /tmp
+</span><span>umount /dev
+</span><span>
+</span><span># Switch root
+</span><span>exec switch_root /new_root /lib/systemd/systemd # I was too lazy to create a link to /sbin/init
+</span><span>EOF
+</span><span>
+</span><span>chmod +x init
+</span></code></pre>
+<p>This script uses commands like <code>mount</code> and <code>truncate</code>, all of these need to be made available in the final initrd, this can be done using BusyBox, which provides multiple utilities in a single file.</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>$ pushd /tmp/initrd/bin
+</span><span>
+</span><span>$ curl -s https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox &gt; busybox
+</span><span>
+</span><span># Make it executable
+</span><span>$ chmod +x busybox
+</span><span>
+</span><span># Now I can create links for all the utilities I use in the init script above:
+</span><span>$ ln -s busybox mount
+</span><span>$ ln -s busybox truncate
+</span><span>$ ln -s busybox losetup
+</span><span>$ ln -s busybox mkdir
+</span><span>$ ln -s busybox mkfs.ext2
+</span><span>$ ln -s busybox tar
+</span><span>$ ln -s busybox umount
+</span><span>$ ln -s busybox switch_root
+</span><span>
+</span><span>$ popd
+</span></code></pre>
+<p>And now I create the initrd by packing everything into a <code>cpio</code> archive</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span>$ find . -print0 | cpio --null --create --verbose --format=newc &gt; initrd.cpio
+</span></code></pre>
+<p>The full script can be found <a href="https://gist.github.com/bennyz/b96f01b7f7c447927502b48b22051c26">here</a></p>
+<p>Now I have the <code>initrd</code> ready, I can finally create the VM, I will use a configuration file:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span># Notes: hello-vmlinux.bin is the official example kernel, taken from:
+</span><span># https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md
+</span><span>$ cat vmconfig-initrd.json
+</span><span>{
+</span><span>  &quot;boot-source&quot;: {
+</span><span>    &quot;kernel_image_path&quot;: &quot;hello-vmlinux.bin&quot;,
+</span><span>    &quot;boot_args&quot;: &quot;console=ttyS0 reboot=k panic=1 pci=off&quot;,
+</span><span>    &quot;initrd_path&quot;: &quot;/tmp/initrd/initrd.cpio&quot;
+</span><span>  },
+</span><span>  &quot;drives&quot;: [
+</span><span>    {
+</span><span>      &quot;drive_id&quot;: &quot;rootfs&quot;,
+</span><span>      &quot;path_on_host&quot;: &quot;/dev/nbd0&quot;,
+</span><span>      &quot;is_root_device&quot;: false,
+</span><span>      &quot;is_read_only&quot;: false
+</span><span>    }
+</span><span>  ],
+</span><span>  &quot;machine-config&quot;: {
+</span><span>    &quot;vcpu_count&quot;: 2,
+</span><span>    &quot;mem_size_mib&quot;: 4500
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>Since initrd is run in-memory, there needs to be enough of it to do the <code>tar</code> extraction. Another important note, is that the rootfs drive should be marked as <code>is_root_device: false</code>, because Firecracker passes the initrd as the root filesystem device.</p>
+<p>Note:
+The <code>init</code> script creates a loop block device on which an <code>ext2</code> filesystem is created. The <code>tar</code> I use contains an ext4 filesystem, but it still works. BusyBox doesn't come with newer filesystems, likely on purpose, so if I wanted to use <code>ext4</code> I would have to provide <code>e2fsprogs</code> myself.</p>
+<h2 id="run-the-thing">Run the Thing</h2>
+<p>Now the micro VM can be started with:</p>
+<pre data-lang="shell" style="background-color:#2b303b;color:#c0c5ce;" class="language-shell "><code class="language-shell" data-lang="shell"><span> $ ./firecracker --no-api --config-file vmconfig-initrd.json
+</span></code></pre>
+<p>And voilà!
+<a href="https://asciinema.org/a/PSrhDUbTVj8pPIzeTupuKW76f"><img src="https://asciinema.org/a/PSrhDUbTVj8pPIzeTupuKW76f.svg" alt="asciicast" /></a></p>
+
+    </div>
+
+    
+    
+
+    <div class="post-footer">
+        
+            
+            
+                <div class="post-nav">
+                    
+                    
+                        <a class="next" href="https:&#x2F;&#x2F;bennyz.github.io&#x2F;setting-static-ip-using-libvirt&#x2F;">Setting Static IP Using Libvirt ›</a>
+                    
+                </div>
+            
+
+        
+
+    </div>
+
+    
+    
+</article>
+
+
+                </div>
+            </main>
+
+            
+            
+        </div>
+
+      
+          <script type="text/javascript" src="https://bennyz.github.io/even.js" ></script>
+      
+    </body>
+
+</html>
