@@ -1,6 +1,0 @@
-[submodule "themes/anatole-zola"]
-	path = themes/anatole-zola
-	url = https://github.com/longfangsong/anatole-zola.git
-[submodule "themes/anpu"]
-	path = themes/anpu
-	url = https://github.com/zbrox/anpu-zola-theme.git
