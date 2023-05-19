@@ -1,17 +1,15 @@
-{% extends "index.html" %}
+{% extends "basic.html" %}
 
 {% block content %}
-    <div class="taxonomies">
-        <div class="taxonomies__title">
-            {{ terms | length }} tags in total
-        </div>
-        <div class="taxonomies__items">
-            {% for tag in terms %}
-                <a href="{{ tag.permalink }}">
-                    {{ tag.name }}
-                    <span class="count">{{ tag.pages | length }}</span>
-                </a>
-            {% endfor %}
-        </div>
-    </div>
+<div class="archive animated fadeInDown">
+    <ul class="list-with-title">
+      <div class="listing-title">{{ trans(key="tags", lang=lang) }}</div>
+          {% for term in terms %}
+          <li class="tag-list-item">
+              <a class="tagname" href="{{ term.permalink }}">{{ term.name }}</a>
+              <span class="tagcount">{{ term.pages | length }}</span>
+          </li>
+          {% endfor %}
+    </ul>
+</div>
 {% endblock content %}
