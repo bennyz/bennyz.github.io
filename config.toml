@@ -20,3 +20,15 @@ highlight_code = true
 [extra]
 title = "Technical Notes"
 description = "Personal blog"
+
+[languages.en.translations]
+language_name = "English"
+about = "About"
+home = "Home"
+tags = "Tags"
+archive = "Archive"
+projects = "Projects"
+links = "Links"
+date_format = "%Y-%m-%d"
+next_page = "Next Page"
+last_page = "Last Page"
