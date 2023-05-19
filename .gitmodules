@@ -1,15 +1,3 @@
-[submodule "themes/slim"]
-	path = themes/slim
-	url = https://github.com/jameshclrk/zola-slim
-[submodule "themes/lightspeed"]
-	path = themes/lightspeed
-	url = https://github.com/carpetscheme/lightspeed
-[submodule "themes/even"]
-	path = themes/even
-	url = https://github.com/getzola/even.git
-[submodule "themes/anatole-zole"]
-	path = themes/anatole-zole
-	url = https://github.com/longfangsong/anatole-zola.git
 [submodule "themes/anatole-zola"]
 	path = themes/anatole-zola
 	url = https://github.com/longfangsong/anatole-zola.git
